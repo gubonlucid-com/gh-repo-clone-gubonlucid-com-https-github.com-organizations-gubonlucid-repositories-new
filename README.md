@@ -64,20 +64,6 @@ lucid-platform/
 
 ---
 
-## 🚀 開始創建文件
-
-我會按順序提供每個文件的完整代碼。請按照以下步驟：
-
-1. **在你的本地倉庫根目錄創建文件夾結構**
-2. **複製我提供的代碼到相應文件**
-3. **完成後提交和推送**
-
-讓我開始提供文件...
-
----
-
-## 📝 第 1 部分：根目錄文件
-
 ### **.gitignore**
 ```
 node_modules/
@@ -90,6 +76,7 @@ build/
 .vscode/
 .idea/
 ```
+---
 
 ### **.env.example**
 ```
@@ -114,6 +101,7 @@ ECPAY_KEY=your_ecpay_key
 # Frontend
 VITE_API_URL=http://localhost:5000
 ```
+---
 
 ### **README.md**
 ```markdown
@@ -168,13 +156,7 @@ CREATE DATABASE lucid_platform;
 \i ../database/schema.sql
 \i ../database/seeds.sql
 ```
-
-## 📚 Documentation
-- [API Documentation](docs/API.md)
-- [Database Schema](docs/DATABASE.md)
-- [Architecture Guide](docs/ARCHITECTURE.md)
-- [Setup Guide](docs/SETUP.md)
-- [Deployment Guide](docs/DEPLOYMENT.md)
+---
 
 ## 🔐 Security
 - All passwords are hashed with bcryptjs
@@ -215,34 +197,6 @@ touch .gitignore
 touch .env.example
 touch README.md
 ```
-
-### **Step 3：添加文件內容**
-
-打開每個文件，複製我上面提供的代碼。
-
----
-
-## 📋 下一步
-
-告訴我你已完成以下步驟：
-
-```
-✅ 創建了文件夾結構
-✅ 創建了根目錄文件
-✅ 添加了文件內容
-```
-
-然後我會繼續提供：
-- **backend/package.json** 和其他後端文件
-- **database/schema.sql** 完整的數據庫設計
-- **frontend** 前端代碼
-- **docs** 完整的技術文檔
-
-完美！現在讓我為你提供**第 3 部分：數據庫 Schema 和前端文件**。
-
----
-
-## 📊 第 3 部分：數據庫文件
 
 ### **database/schema.sql**
 
@@ -429,7 +383,6 @@ INSERT INTO goals_and_planning (user_id, short_term_goals, medium_term_goals, lo
 
 ---
 
-## 🎨 第 4 部分：前端文件
 
 ### **frontend/package.json**
 
@@ -859,9 +812,6 @@ export default Register;
 
 ---
 
-## 📋 創建所有文件步驟
-
-### **Step 1：創建數據庫文件**
 ```bash
 # 創建 database/schema.sql 和 database/seeds.sql
 # 複製上面提供的代碼到相應文件
@@ -888,12 +838,7 @@ touch src/pages/Register.jsx
 touch src/pages/Auth.css
 ```
 
-### **Step 3：複製所有代碼**
-- 將上面的每個文件內容複製到相應的文件中
-
 ---
-
-## ✅ 完成後的下一步
 
 1. **初始化後端**
 ```bash
@@ -920,21 +865,6 @@ npm run dev
 
 ---
 
-## 📝 現在告訴我
-
-**你已經創建了所有文件嗎？**
-
-```
-✅ 創建了 database/ 文件
-✅ 創建了所有 backend/ 文件
-✅ 創建了所有 frontend/ 文件
-✅ 準備好提交代碼
-```
-完美！🎉 现在让我为你提供**CSS 文件和完整的技术文档**。
-
----
-
-## 🎨 第 5 部分：CSS 样式文件
 
 ### **frontend/src/App.css**
 
@@ -1292,11 +1222,6 @@ button {
   }
 }
 ```
-
----
-
-## 📚 第 6 部分：技术文档
-
 ### **docs/API.md**
 
 ```markdown
@@ -1306,7 +1231,6 @@ button {
 ```
 http://localhost:5000/api
 ```
-
 ## 认证
 
 所有受保护的端点都需要在请求头中包含 JWT token：
@@ -1346,10 +1270,8 @@ Authorization: Bearer <your_token_here>
 }
 ```
 
-#### 2. 用户登录
 **POST** `/auth/login`
 
-请求体：
 ```json
 {
   "email": "user@example.com",
@@ -1357,7 +1279,7 @@ Authorization: Bearer <your_token_here>
 }
 ```
 
-响应：
+
 ```json
 {
   "message": "Login successful",
@@ -1372,9 +1294,6 @@ Authorization: Bearer <your_token_here>
 
 ---
 
-### 评估端点
-
-#### 3. 创建财务评估
 **POST** `/assessments/financial`
 
 请求头：
@@ -1395,7 +1314,6 @@ Authorization: Bearer <token>
 }
 ```
 
-响应：
 ```json
 {
   "message": "Financial assessment saved",
@@ -1408,13 +1326,10 @@ Authorization: Bearer <token>
 }
 ```
 
-#### 4. 获取评估
 **GET** `/assessments/:type`
 
-参数：
 - `type`: financial | career | growth | goals
 
-响应：
 ```json
 {
   "data": { /* 评估数据 */ }
@@ -1423,17 +1338,12 @@ Authorization: Bearer <token>
 
 ---
 
-### 报告端点
-
-#### 5. 生成报告
 **POST** `/reports/generate`
 
-请求头：
 ```
 Authorization: Bearer <token>
 ```
 
-响应：
 ```json
 {
   "message": "Report generated",
@@ -1446,27 +1356,19 @@ Authorization: Bearer <token>
 }
 ```
 
-#### 6. 获取报告
 **GET** `/reports/:reportId`
 
-请求头：
 ```
 Authorization: Bearer <token>
 ```
 
----
-
-### 仪表板端点
-
-#### 7. 获取仪表板数据
 **GET** `/dashboard`
 
-请求头：
+
 ```
 Authorization: Bearer <token>
 ```
 
-响应：
 ```json
 {
   "user": { /* 用户数据 */ },
@@ -1475,12 +1377,6 @@ Authorization: Bearer <token>
 }
 ```
 
----
-
-## 错误处理
-
-所有错误响应都遵循以下格式：
-
 ```json
 {
   "error": "Error message here",
@@ -1488,15 +1384,10 @@ Authorization: Bearer <token>
 }
 ```
 
-常见错误代码：
 - `400`: 请求参数错误
 - `401`: 未授权或 token 无效
 - `404`: 资源不存在
 - `500`: 服务器内部错误
-
----
-
-## 状态码
 
 - `200`: 成功
 - `201`: 创建成功
@@ -1546,10 +1437,6 @@ CREATE TABLE users (
 - `subscription_tier`: 订阅等级 (free, basic, premium, pro)
 - `is_active`: 账户是否活跃
 
----
-
-### 2. financial_assessments 表
-存储用户的财务评估数据
 
 ```sql
 CREATE TABLE financial_assessments (
@@ -1573,10 +1460,6 @@ CREATE TABLE financial_assessments (
 - `savings_rate`: 储蓄率 = (月收入 - 月支出) / 月收入
 - `debt_to_income`: 债务收入比 = 总债务 / (月收入 × 12)
 
----
-
-### 3. career_assessments 表
-存储职业相关评估
 
 ```sql
 CREATE TABLE career_assessments (
