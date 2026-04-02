@@ -1995,9 +1995,6 @@ npm run dev
 ✅ "我需要帮助设置环境变量"
 ✅ "我需要更多的代码文件"
 ✅ "我准备部署到生产环境"
-```
-
-恭喜你！🎉 你现在拥有一个**完整的、生产级别的生活规划平台代码库**！完美！🎉 现在让我为你提供**CSS 文件和完整的技术文档**。
 
 ---
 
@@ -3064,4 +3061,980 @@ npm run dev
 ✅ "我准备部署到生产环境"
 ```
 
-恭喜你！🎉 你现在拥有一个**完整的、生产级别的生活规划平台代码库**！
+完美！🎯 看起来你对这些功能感兴趣！
+
+让我为你逐一提供**完整的部署、安全、UI、AI、支付和移动优化方案**。
+
+---
+
+## 📊 第 1 部分：部署指南
+
+### **部署到 Vercel（前端）**
+
+#### Step 1：连接 GitHub 仓库到 Vercel
+
+1. 访问 https://vercel.com
+2. 点击 "Import Project"
+3. 选择你的 GitHub 仓库：`lucid-platform`
+4. 配置：
+   - **Framework**: Vite
+   - **Root Directory**: `./frontend`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+
+#### Step 2：设置环境变量
+
+在 Vercel 项目设置中添加：
+
+```
+VITE_API_URL=https://your-backend-domain.com
+VITE_STRIPE_KEY=pk_live_your_stripe_key
+```
+
+#### Step 3：自动部署
+
+每次推送到 `main` 分支时，Vercel 会自动部署。
+
+你的前端 URL 会是：
+```
+https://lucid-platform.vercel.app
+```
+
+---
+
+### **部署到 Railway（后端）**
+
+#### Step 1：连接 Railway
+
+1. 访问 https://railway.app
+2. 点击 "New Project"
+3. 选择 "Deploy from GitHub"
+4. 授权并选择 `lucid-platform` 仓库
+
+#### Step 2：配置环境
+
+Railway 会自动检测 Node.js 项目。配置以下内容：
+
+在 Railway 仪表板中设置环境变量：
+
+```
+PORT=5000
+NODE_ENV=production
+DB_HOST=your_railway_postgres_host
+DB_PORT=5432
+DB_NAME=lucid_platform
+DB_USER=postgres
+DB_PASSWORD=your_secure_password
+JWT_SECRET=your_super_secret_key_production
+STRIPE_SECRET_KEY=sk_live_your_stripe_key
+FRONTEND_URL=https://lucid-platform.vercel.app
+```
+
+#### Step 3：PostgreSQL 数据库
+
+在 Railway 中：
+1. 点击 "+ Create"
+2. 选择 "Database"
+3. 选择 "PostgreSQL"
+4. Railway 会为你创建数据库并提供连接字符串
+
+然后运行初始化脚本：
+
+```bash
+# 在本地运行，连接到 Railway 数据库
+psql postgresql://user:password@host:port/lucid_platform < database/schema.sql
+psql postgresql://user:password@host:port/lucid_platform < database/seeds.sql
+```
+
+#### Step 4：自动部署
+
+配置完成后，每次推送到 `main` 分支时都会自动部署。
+
+你的后端 URL 会是：
+```
+https://your-railway-app.railway.app
+```
+
+---
+
+### **部署脚本（package.json）**
+
+在 `backend/package.json` 中添加：
+
+```json
+{
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "build": "echo 'No build needed for Node.js'",
+    "migrate": "psql $DATABASE_URL < database/schema.sql",
+    "seed": "psql $DATABASE_URL < database/seeds.sql"
+  }
+}
+```
+
+在 `frontend/package.json` 中确保有：
+
+```json
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  }
+}
+```
+
+---
+
+## 🔐 第 2 部分：安全配置
+
+### **backend/config/security.js**
+
+```javascript
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('mongo-sanitize');
+
+// 安全头部
+const securityHeaders = helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+    },
+  },
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true,
+  },
+});
+
+// 速率限制
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// 登录速率限制（更严格）
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5, // 5 attempts
+  skipSuccessfulRequests: true,
+  message: 'Too many login attempts, please try again after 15 minutes.',
+});
+
+// CORS 配置
+const corsConfig = {
+  origin: function (origin, callback) {
+    const whitelist = [
+      'https://lucid-platform.vercel.app',
+      'http://localhost:5173',
+      'https://your-domain.com'
+    ];
+    
+    if (whitelist.includes(origin) || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
+
+// 数据清理
+const sanitizeData = (data) => {
+  if (typeof data === 'string') {
+    return mongoSanitize.sanitize(data);
+  }
+  return data;
+};
+
+module.exports = {
+  securityHeaders,
+  limiter,
+  loginLimiter,
+  corsConfig,
+  sanitizeData,
+};
+```
+
+### **更新 backend/index.js**
+
+```javascript
+const express = require('express');
+const cors = require('cors');
+require('dotenv').config();
+
+const {
+  securityHeaders,
+  limiter,
+  loginLimiter,
+  corsConfig
+} = require('./config/security');
+
+const authRoutes = require('./routes/auth');
+const assessmentRoutes = require('./routes/assessments');
+const reportRoutes = require('./routes/reports');
+const dashboardRoutes = require('./routes/dashboard');
+
+const app = express();
+
+// 安全中间件
+app.use(securityHeaders);
+app.use(cors(corsConfig));
+app.use(express.json({ limit: '10kb' })); // 限制请求体大小
+app.use(express.urlencoded({ limit: '10kb', extended: true }));
+
+// 全局速率限制
+app.use(limiter);
+
+// Routes with rate limiting
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth', authRoutes);
+app.use('/api/assessments', assessmentRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+
+// 健康检查
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'API is running',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date()
+  });
+});
+
+// 404 处理
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
+// 错误处理
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  
+  // CORS 错误
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ error: 'CORS policy violation' });
+  }
+  
+  // 验证错误
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({ error: 'Validation failed' });
+  }
+  
+  // 数据库错误
+  if (err.code === '23505') { // 唯一约束违反
+    return res.status(400).json({ error: 'Email already exists' });
+  }
+  
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === 'production' 
+      ? 'Internal Server Error'
+      : err.message,
+    timestamp: new Date()
+  });
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV}`);
+  console.log(`Database: ${process.env.DB_NAME}`);
+});
+```
+
+### **安装安全包**
+
+```bash
+cd backend
+npm install helmet express-rate-limit mongo-sanitize
+```
+
+---
+
+## 🎨 第 3 部分：UI 改进
+
+### **frontend/src/index.css**（全局样式）
+
+```css
+:root {
+  --primary-color: #667eea;
+  --secondary-color: #764ba2;
+  --success-color: #27ae60;
+  --warning-color: #f39c12;
+  --danger-color: #e74c3c;
+  --light-gray: #f5f7fa;
+  --dark-gray: #2c3e50;
+  --border-radius: 8px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background-color: var(--light-gray);
+  color: var(--dark-gray);
+  line-height: 1.6;
+}
+
+/* 响应式文字 */
+h1 {
+  font-size: clamp(24px, 5vw, 48px);
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+h2 {
+  font-size: clamp(20px, 4vw, 36px);
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+h3 {
+  font-size: clamp(16px, 3vw, 24px);
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #666;
+}
+
+/* 按钮样式 */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background-color: #f0f0f0;
+  color: var(--dark-gray);
+  border: 2px solid var(--primary-color);
+}
+
+.btn-secondary:hover {
+  background-color: var(--light-gray);
+}
+
+.btn-danger {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+.btn-danger:hover {
+  opacity: 0.9;
+}
+
+/* 卡片组件 */
+.card {
+  background: white;
+  border-radius: var(--border-radius);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+  border: 1px solid #eee;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px);
+}
+
+/* 输入框样式 */
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #eee;
+  border-radius: var(--border-radius);
+  font-size: 14px;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* 网格布局 */
+.grid {
+  display: grid;
+  gap: 24px;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+@media (max-width: 768px) {
+  .grid-2,
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+  
+  .card {
+    padding: 16px;
+  }
+}
+
+/* 加载动画 */
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(102, 126, 234, 0.3);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 提示信息 */
+.alert {
+  padding: 16px;
+  border-radius: var(--border-radius);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.alert-success {
+  background-color: #d4edda;
+  color: #155724;
+  border-left: 4px solid var(--success-color);
+}
+
+.alert-danger {
+  background-color: #f8d7da;
+  color: #721c24;
+  border-left: 4px solid var(--danger-color);
+}
+
+.alert-warning {
+  background-color: #fff3cd;
+  color: #856404;
+  border-left: 4px solid var(--warning-color);
+}
+
+.alert-info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border-left: 4px solid var(--primary-color);
+}
+```
+
+### **frontend/src/components/Button.jsx**（可复用按钮组件）
+
+```jsx
+import './Button.css';
+
+export function Button({
+  variant = 'primary',
+  size = 'md',
+  disabled = false,
+  loading = false,
+  icon = null,
+  children,
+  ...props
+}) {
+  const className = `btn btn-${variant} btn-${size} ${disabled ? 'disabled' : ''}`;
+  
+  return (
+    <button className={className} disabled={disabled || loading} {...props}>
+      {loading ? <span className="spinner"></span> : icon}
+      {children}
+    </button>
+  );
+}
+
+export function IconButton({ icon, label, ...props }) {
+  return (
+    <button className="icon-btn" title={label} {...props}>
+      {icon}
+    </button>
+  );
+}
+```
+
+### **frontend/src/components/Button.css**
+
+```css
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary:hover:not(.disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.btn-secondary {
+  background-color: #f0f0f0;
+  color: #333;
+  border: 2px solid #667eea;
+}
+
+.btn-secondary:hover:not(.disabled) {
+  background-color: #f9f9f9;
+}
+
+.btn-danger {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.btn-danger:hover:not(.disabled) {
+  background-color: #c0392b;
+}
+
+.btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 按钮大小 */
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-md {
+  padding: 10px 20px;
+  font-size: 14px;
+}
+
+.btn-lg {
+  padding: 14px 28px;
+  font-size: 16px;
+}
+
+/* 图标按钮 */
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  transition: transform 0.2s;
+  padding: 8px;
+}
+
+.icon-btn:hover {
+  transform: scale(1.1);
+}
+```
+
+---
+
+## 🤖 第 4 部分：AI 集成
+
+### **backend/services/ai/aiAnalyzer.js**
+
+```javascript
+const axios = require('axios');
+
+// 使用 Google Gemini API 或 OpenAI API
+class AIAnalyzer {
+  constructor() {
+    this.apiKey = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY;
+    this.model = 'gemini-pro'; // 或 'gpt-3.5-turbo'
+  }
+
+  /**
+   * 生成个性化的财务建议
+   */
+  async generateFinancialAdvice(assessmentData) {
+    const prompt = `
+      基于以下财务数据生成个性化建议：
+      - 月收入: ${assessmentData.monthly_income}
+      - 月支出: ${assessmentData.total_monthly_expense}
+      - 储蓄: ${assessmentData.savings_balance}
+      - 总资产: ${assessmentData.total_assets}
+      - 总债务: ${assessmentData.total_debt}
+      
+      请提供：
+      1. 财务健康评分 (1-100)
+      2. 前3个行动建议
+      3. 风险警告 (如果有)
+      
+      用 JSON 格式返回。
+    `;
+
+    try {
+      const response = await this.callAI(prompt);
+      return JSON.parse(response);
+    } catch (error) {
+      console.error('AI analysis error:', error);
+      return this.getDefaultAdvice();
+    }
+  }
+
+  /**
+   * 生成职业发展建议
+   */
+  async generateCareerAdvice(careerData) {
+    const prompt = `
+      基于以下职业数据生成发展建议：
+      - 职位: ${careerData.current_job_title}
+      - 行业: ${careerData.industry}
+      - 经验年限: ${careerData.years_of_experience}
+      - 当前薪资: ${careerData.current_salary}
+      - 目标薪资: ${careerData.desired_salary}
+      - 关键技能: ${careerData.key_skills}
+      
+      请提供：
+      1. 职业路径建议
+      2. 技能提升计划
+      3. 薪资谈判建议
+      4. 时间表
+      
+      用 JSON 格式返回。
+    `;
+
+    try {
+      const response = await this.callAI(prompt);
+      return JSON.parse(response);
+    } catch (error) {
+      console.error('AI analysis error:', error);
+      return this.getDefaultAdvice();
+    }
+  }
+
+  /**
+   * 生成生活平衡建议
+   */
+  async generateGrowthAdvice(growthData) {
+    const prompt = `
+      基于以下个人成长数据生成建议：
+      - 身体健康评分: ${growthData.physical_health_score}
+      - 心理健康评分: ${growthData.mental_health_score}
+      - 工作生活平衡: ${growthData.work_life_balance_score}
+      - 学习习惯: ${growthData.learning_habits_score}
+      - 人际关系质量: ${growthData.relationship_quality_score}
+      - 生活满意度: ${growthData.life_satisfaction_score}
+      
+      请提供：
+      1. 优先改进领域
+      2. 具体的改进计划
+      3. 日常习惯建议
+      4. 心理健康提示
+      
+      用 JSON 格式返回。
+    `;
+
+    try {
+      const response = await this.callAI(prompt);
+      return JSON.parse(response);
+    } catch (error) {
+      console.error('AI analysis error:', error);
+      return this.getDefaultAdvice();
+    }
+  }
+
+  /**
+   * 调用 AI API
+   */
+  async callAI(prompt) {
+    if (process.env.AI_PROVIDER === 'openai') {
+      return await this.callOpenAI(prompt);
+    } else {
+      return await this.callGemini(prompt);
+    }
+  }
+
+  /**
+   * 调用 OpenAI API
+   */
+  async callOpenAI(prompt) {
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 1000,
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return response.data.choices[0].message.content;
+  }
+
+  /**
+   * 调用 Google Gemini API
+   */
+  async callGemini(prompt) {
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
+      }
+    );
+
+    return response.data.candidates[0].content.parts[0].text;
+  }
+
+  /**
+   * 默认建议
+   */
+  getDefaultAdvice() {
+    return {
+      score: 70,
+      recommendations: [
+        '继续追踪你的财务数据',
+        '定期审查你的目标',
+        '投资于自我发展',
+      ],
+      warnings: [],
+    };
+  }
+}
+
+module.exports = AIAnalyzer;
+```
+
+### **更新 backend/routes/reports.js（使用 AI）**
+
+```javascript
+const express = require('express');
+const pool = require('../config/database');
+const authMiddleware = require('../middleware/auth');
+const FinancialAnalyzer = require('../services/analysis/financialAnalyzer');
+const AIAnalyzer = require('../services/ai/aiAnalyzer');
+
+const router = express.Router();
+const aiAnalyzer = new AIAnalyzer();
+
+// 生成报告（带 AI 分析）
+router.post('/generate', authMiddleware, async (req, res) => {
+  try {
+    const { id: userId } = req.user;
+
+    // 获取所有评估
+    const [financialResult, careerResult, growthResult, goalsResult] = await Promise.all([
+      pool.query(
+        'SELECT * FROM financial_assessments WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+        [userId]
+      ),
+      pool.query(
+        'SELECT * FROM career_assessments WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+        [userId]
+      ),
+      pool.query(
+        'SELECT * FROM growth_assessments WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+        [userId]
+      ),
+      pool.query(
+        'SELECT * FROM goals_and_planning WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+        [userId]
+      ),
+    ]);
+
+    // 使用 AI 生成建议
+    const [financialAdvice, careerAdvice, growthAdvice] = await Promise.all([
+      financialResult.rows[0] ? aiAnalyzer.generateFinancialAdvice(financialResult.rows[0]) : null,
+      careerResult.rows[0] ? aiAnalyzer.generateCareerAdvice(careerResult.rows[0]) : null,
+      growthResult.rows[0] ? aiAnalyzer.generateGrowthAdvice(growthResult.rows[0]) : null,
+    ]);
+
+    // 计算综合评分
+    const scores = [
+      financialAdvice?.score || 60,
+      careerAdvice?.score || 60,
+      growthAdvice?.score || 60,
+    ].filter(Boolean);
+    const overallScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+
+    // 保存报告
+    const reportResult = await pool.query(
+      `INSERT INTO reports 
+       (user_id, financial_analysis, career_analysis, growth_analysis, goals_analysis, overall_life_score, recommendations)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) 
+       RETURNING *`,
+      [
+        userId,
+        JSON.stringify(financialAdvice || {}),
+        JSON.stringify(careerAdvice || {}),
+        JSON.stringify(growthAdvice || {}),
+        JSON.stringify(goalsResult.rows[0] || {}),
+        overallScore,
+        JSON.stringify({
+          financial: financialAdvice?.recommendations || [],
+          career: careerAdvice?.recommendations || [],
+          growth: growthAdvice?.recommendations || [],
+        }),
+      ]
+    );
+
+    res.json({
+      message: 'Report generated with AI insights',
+      data: reportResult.rows[0],
+    });
+  } catch (error) {
+    console.error('Report generation error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;
+```
+
+### **添加 AI 环境变量到 .env.example**
+
+```
+# AI Configuration
+AI_PROVIDER=gemini  # 或 openai
+GEMINI_API_KEY=your_gemini_api_key
+OPENAI_API_KEY=your_openai_api_key
+```
+
+---
+
+## 💰 第 5 部分：支付系统集成
+
+### **backend/services/payment/stripeService.js**
+
+```javascript
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const pool = require('../../config/database');
+
+class StripeService {
+  /**
+   * 创建支付意图
+   */
+  async createPaymentIntent(userId, amount, subscriptionTier) {
+    try {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100), // 转换为分
+        currency: 'usd',
+        metadata: {
+          userId,
+          subscriptionTier,
+        },
+      });
+
+      return paymentIntent;
+    } catch (error) {
+      console.error('Stripe error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 确认支付
+   */
+  async confirmPayment(paymentIntentId, userId, subscriptionTier, amount) {
+    try {
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      if (paymentIntent.status === 'succeeded') {
+        // 保存支付记录
+        await pool.query(
+          `INSERT INTO payments 
+           (user_id, amount, subscription_tier, payment_method, transaction_id, status)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            userId,
+            amount,
+            subscriptionTier,
+            'stripe',
+            paymentIntentId,
+            'completed',
+          ]
+        );
+
+        // 更新用户订阅
+        const endDate = new Date();
+        endDate.setMonth(endDate.getMonth() + 1);
+
+        await pool.query(
+          `UPDATE users 
+           SET subscription_tier = $1, 
+               subscription_start_
